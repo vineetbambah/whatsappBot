@@ -1,13 +1,18 @@
 import express from 'express';
 import twilio from 'twilio';
 import dotenv from'dotenv';
+import axios from 'axios';
+import fs from 'fs';
 dotenv.config();
-// const accountSid = process.env.TWILIO_ACCOUNT_SID;
-// const authToken = process.env.TWILIO_AUTH_TOKEN;
 const port = process.env.PORT;
-// const client = twilio(accountSid, authToken);
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const client = twilio(accountSid, authToken);
+
 
 const app = express();
+app.use(express.json());
+
 app.use(express.urlencoded({ extended: true }));
 app.get('/',(req,res)=>{
     res.send('Hello World');
@@ -20,4 +25,8 @@ app.post('/webhook', (req, res) => {
     
 });
 
+app.post('/checkContact', async (req, res) => {
+    //check if the contact is on the list and if not then create a new contact
+    });
+  
 app.listen(3000,()=>{console.log(`Server is running on port ${port}`)});
