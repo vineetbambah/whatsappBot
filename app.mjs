@@ -1,6 +1,7 @@
 import express from 'express';
 import twilio from 'twilio';
 import dotenv from'dotenv';
+import {getVcf} from './axiosDownloadVcf.mjs';
 import axios from 'axios';
 import fs from 'fs';
 dotenv.config();
@@ -27,6 +28,8 @@ app.post('/webhook', (req, res) => {
 
 app.post('/checkContact', async (req, res) => {
     //check if the contact is on the list and if not then create a new contact
+    let vcfUrl = req.body.MediaUrl0;
+    getVcf(req.body.MediaUrl0);
     });
   
 app.listen(3000,()=>{console.log(`Server is running on port ${port}`)});
