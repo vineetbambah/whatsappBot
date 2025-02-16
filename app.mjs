@@ -48,7 +48,7 @@ app.post('/spiderman', async (req, res) => {
         where:{number:sender}
     })
     
-    if(check && userState!='onboarding1'){
+    if(check && userState!='onboarding2'){
         userState = 'registered';
     }else{
         message(req.body.From,`Hello! I see it's your first time here. Please enter your name.`);
@@ -79,11 +79,5 @@ app.post('/spiderman', async (req, res) => {
     }
 })
 
-
-app.post('/checkContact', async (req, res) => {
-    //check if the contact is on the list and if not then create a new contact
-    let vcfUrl = req.body.MediaUrl0;
-    checkContact(vcfUrl);
-});
 
 app.listen(3000, () => { console.log(`Server is running on port ${port}`) });
