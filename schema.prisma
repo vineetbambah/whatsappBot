@@ -9,7 +9,7 @@ datasource db {
 
 model users{
   uid  Int @id @default(autoincrement())
-  name String
+  name String?
   number String
   contacts contacts[]
 }
