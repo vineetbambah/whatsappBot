@@ -89,12 +89,15 @@ app.post('/spiderman', async (req, res) => {
     const user = await prisma.users.findFirst({
         where:{number:sender},
     })
-    if(userState=='unregistered' && !user){
+    if(!user){
         userState = 'onboarding1';
     }else if(user && userState === 'onboarding1'){
         userState = 'onboarding2';
     }else{
         userState = 'registered';
+    }
+    if(req.body.MediaContentType0 === 'text/vcard'){
+        registeredCase='firstTimeSent';
     }
     
     switch(userState){
@@ -130,9 +133,11 @@ app.post('/spiderman', async (req, res) => {
             message(req.body.From,`Welcome ${user.name}! Send a vcf file to get started`);
             switch(registeredCase){
                 case 'firstTimeSent':
+                    console.log('First time sent');
                     checkContact(req);
                     break;
                 case 'askForContext':
+                    console.log('Asking for context');
                     prisma.contact.update({
                         where:{
                             name:card.fn,
@@ -146,6 +151,7 @@ app.post('/spiderman', async (req, res) => {
                     registeredCase = 'askForFrequency';
                     break;
                 case 'askForFrequency':
+                    console.log('Asking for frequency');
                     prisma.users.update({
                         where:{
                             name:card.fn,
@@ -158,6 +164,7 @@ app.post('/spiderman', async (req, res) => {
                     message(req.body.From,`Thank you! You will be reminded every ${req.body.Body} days`);
                     break;
                 case 'vcfFileNotSent':
+                    console.log('Vcf file not sent');
                     message(req.body.From,`Please send a vcf file to get started`);
                     break;
             }
