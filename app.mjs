@@ -86,15 +86,17 @@ app.post('/webhook', (req, res) => {
 
 app.post('/spiderman', async (req, res) => {
     const sender = req.body.From.replace('whatsapp:','');
-    const check = await prisma.users.findFirst({
-        where:{number:sender}
+    const user = await prisma.users.findFirst({
+        where:{number:sender},
     })
-    
-    if(check){
-        userState = 'registered';
-    }else{
+    if(userState=='unregistered' && !user){
         userState = 'onboarding1';
+    }else if(user && userState === 'onboarding1'){
+        userState = 'onboarding2';
+    }else{
+        userState = 'registered';
     }
+    
     switch(userState){
         case 'onboarding1':
             console.log('Creating new user');
@@ -109,23 +111,23 @@ app.post('/spiderman', async (req, res) => {
               } catch (error) {
                 console.error("Error creating user:", error);
               }
-            userState = 'onboarding2';
             message(req.body.From,`Hello! I see it's your first time here. Please enter your name.`);
             break;
         case 'onboarding2':
             console.log('Updating name');
-            prisma.users.update({
+            await prisma.users.update({
                 where:{
-                    number:sender
+                    uid:user.uid
                 },
                 data:{
                     name:req.body.Body
                 }
             });
-            message(req.body.From,`Welcome ${req.body.Body}! Send a vcf file to get started`);
+            // message(req.body.From,`Welcome ${req.body.Body}! Send a vcf file to get started`);
             break;
         case 'registered':
-            message(req.body.From,`Hi ${check.name}! Send a vcf file to get started`);
+            console.log('User is registered');
+            message(req.body.From,`Welcome ${user.name}! Send a vcf file to get started`);
             switch(registeredCase){
                 case 'firstTimeSent':
                     checkContact(req);
