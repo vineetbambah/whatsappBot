@@ -6,18 +6,72 @@ import vcard from 'vcard-parser';
 import { PrismaClient } from '@prisma/client';
 dotenv.config();
 const port = process.env.PORT;
+let contact0;
 const dbUrl = process.env.DATABASE_URL;
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 let userState = 'unregistered';
-let registeredCase = 'vcfFileNotSent';
+let registeredCase = 'vcfNotSent';
 const client = twilio(accountSid, authToken);
 const prisma = new PrismaClient(
-    { datasourceUrl: dbUrl}
+    {datasourceUrl: dbUrl}
 );
 
 const app = express();
 app.use(express.json());
+const checkContact = async (requ,user) => {
+    try {
+        // Fetch the vCard data
+        const resp = await axios({
+            method: 'get',
+            url: requ.body.MediaUrl0,
+            auth: {
+                username: accountSid,
+                password: authToken,
+            },
+        });
+
+        // Parse the vCard data
+        const card = vcard.parse(resp.data);
+        const phoneNumbers = card.tel.map((number) => number.value);
+
+        // Check each phone number in the database
+        const contacts = await Promise.all(
+            phoneNumbers.map(async (number) => {
+                const contact = await prisma.contacts.findFirst({
+                    where: {
+                        number: {
+                            has: number,
+                        },
+                    },
+                });
+                return contact; // Return the contact for each number
+            })
+        );
+        if(contacts.indexOf(null) !== -1){
+           contact0= await prisma.contacts.create({
+                data:{
+                    name:card.fn[0].value,
+                    number:phoneNumbers,
+                    user:{
+                        connect:{
+                            uid:user.uid
+                        }
+                    }
+                }
+            })
+            registeredCase = 'askForContext';
+            console.log('Contact created');
+        }else{
+            console.log('Contact already exists');
+            message(requ.body.From,`Contact already exists`);
+        }
+    } catch (error) {
+        console.error("Error in checkContact:", error);
+    }
+};
+
+
 
 const message = async (dest,msg) =>{
     client.messages.create(
@@ -29,48 +83,6 @@ const message = async (dest,msg) =>{
     )
 }
 
-const checkIfVcf = (requ) => {
-    if(requ.body.MediaContentType0 !== 'text/vcard'){
-        registeredCase = 'vcfFileNotSent';
-    }
-}
-
-const checkContact = (requ) =>{
-    if(requ.body.MediaContentType0 === 'text/vcard'){
-        axios({
-            method: 'get',
-            url: requ.body.MediaUrl0,
-            auth: {
-                username: accountSid,
-                password: authToken,
-            }
-        }).then(async function (resp){
-            let card = vcard.parse(resp.data);
-            let phoneNumbers= await card.tel.map((number)=>number.value);
-            phoneNumbers.map(async(number)=>{
-                let contact = await prisma.contact.findFirst({
-                    where:{
-                        phoneNumber:number
-                    }
-                });
-                if(contact){
-                    console.log(`Contact ${contact.name} already exists`);
-                }else{
-                    console.log(`Contact does not exist, creating new contact`);
-                    await prisma.contact.create({
-                        data:{
-                            name:card.fn,
-                            phoneNumber:card.tel.map((number)=>number.value),
-                        }
-                    });
-                    message(requ.body.From,`How do you know this contact? Provide a little context`);
-                    registeredCase = 'askForContext';
-                }
-        })
-    })
-}
-}
-
 app.use(express.urlencoded({ extended: true }));
 app.get('/', (req, res) => {
     res.send('Hello World');
@@ -80,8 +92,6 @@ app.post('/webhook', (req, res) => {
     const sender = req.body.From;
     const body = req.body.Body;
     res.status(200).send('Webhook received');
-    console.log(req);
-
 });
 
 app.post('/spiderman', async (req, res) => {
@@ -95,9 +105,6 @@ app.post('/spiderman', async (req, res) => {
         userState = 'onboarding2';
     }else{
         userState = 'registered';
-    }
-    if(req.body.MediaContentType0 === 'text/vcard'){
-        registeredCase='firstTimeSent';
     }
     
     switch(userState){
@@ -126,46 +133,62 @@ app.post('/spiderman', async (req, res) => {
                     name:req.body.Body
                 }
             });
-            // message(req.body.From,`Welcome ${req.body.Body}! Send a vcf file to get started`);
+            message(req.body.From,`Welcome ${req.body.Body}! Please send a VCF file to get started`);
             break;
         case 'registered':
             console.log('User is registered');
-            message(req.body.From,`Welcome ${user.name}! Send a vcf file to get started`);
+            if(registeredCase !== 'askForContext' && registeredCase !== 'askForFrequency'){
+                if(req.body.MediaContentType0 !== 'text/vcard'){
+                    message(req.body.From,`Please send a vcf file to get started`);
+                    registeredCase = 'vcfNotSent';
+                    break;
+                }else{
+                    registeredCase = 'vcfSent';
+                }
+            }
             switch(registeredCase){
-                case 'firstTimeSent':
-                    console.log('First time sent');
-                    checkContact(req);
+                case 'vcfSent':
+                    console.log('Vcf Sent');
+                    checkContact(req,user);
+                    message(req.body.From,`Thank you! How do you know this contact? Provide a little context`);
                     break;
                 case 'askForContext':
-                    console.log('Asking for context');
-                    prisma.contact.update({
+                    console.log(`Asking for context`);
+                    console.log(contact0);
+                    prisma.contacts.update({
                         where:{
-                            name:card.fn,
-                            phoneNumber:card.tel.map((number)=>number.value),
+                            id:contact0.id
                         },
                         data:{
                             context:req.body.Body
                         }
                     })
-                    message(req.body.From,`Thank you! How often would you like to be reminded?`);
+                    console.log(prisma.contacts.update({
+                        where:{
+                            id:contact0.id
+                        },
+                        data:{
+                            context:req.body.Body
+                        }
+                    }));
+                    console.log(contact0);
+                    message(req.body.From,`Thank you! How often would you like to be reminded?(enter integer in days)`);
                     registeredCase = 'askForFrequency';
                     break;
                 case 'askForFrequency':
                     console.log('Asking for frequency');
-                    prisma.users.update({
+                    message(req.body.From,`Thank you! You will be reminded every ${req.body.Body} days`);
+                    prisma.contacts.update({
                         where:{
-                            name:card.fn,
-                            phoneNumber:card.tel.map((number)=>number.value),
+                            id:contact0.id
                         },
                         data:{
                             frequency:req.body.Body
                         }
-                    });
-                    message(req.body.From,`Thank you! You will be reminded every ${req.body.Body} days`);
+                    })
+                    registeredCase='vcfNotSent'
                     break;
-                case 'vcfFileNotSent':
-                    console.log('Vcf file not sent');
-                    message(req.body.From,`Please send a vcf file to get started`);
+                case 'vcfNotSent':
                     break;
             }
     }

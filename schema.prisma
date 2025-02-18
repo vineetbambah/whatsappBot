@@ -16,8 +16,8 @@ model users{
 model contacts{
   id     Int    @id @default(autoincrement())
   name String
-  context String
-  frequency Int
+  context String?
+  frequency Int?
   number String[]
   userid Int
   user   users  @relation(fields: [userid], references: [uid])
