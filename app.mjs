@@ -155,7 +155,7 @@ app.post('/spiderman', async (req, res) => {
                 case 'askForContext':
                     console.log(`Asking for context`);
                     console.log(contact0);
-                    prisma.contacts.update({
+                    await prisma.contacts.update({
                         where:{
                             id:contact0.id
                         },
@@ -178,12 +178,12 @@ app.post('/spiderman', async (req, res) => {
                 case 'askForFrequency':
                     console.log('Asking for frequency');
                     message(req.body.From,`Thank you! You will be reminded every ${req.body.Body} days`);
-                    prisma.contacts.update({
+                    await prisma.contacts.update({
                         where:{
                             id:contact0.id
                         },
                         data:{
-                            frequency:req.body.Body
+                            frequency:parseInt(req.body.Body)
                         }
                     })
                     registeredCase='vcfNotSent'
