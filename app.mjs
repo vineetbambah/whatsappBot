@@ -3,6 +3,7 @@ import axios from 'axios';
 import twilio from 'twilio';
 import dotenv from 'dotenv';
 import vcard from 'vcard-parser';
+import cron from 'node-cron';
 import { PrismaClient } from '@prisma/client';
 dotenv.config();
 const port = process.env.PORT;
@@ -172,18 +173,20 @@ app.post('/spiderman', async (req, res) => {
                         }
                     }));
                     console.log(contact0);
-                    message(req.body.From,`Thank you! How often would you like to be reminded?(enter integer in days)`);
+                    message(req.body.From,`Thank you! How often would you like to be reminded?(enter integer in minutes)`);
                     registeredCase = 'askForFrequency';
                     break;
                 case 'askForFrequency':
                     console.log('Asking for frequency');
-                    message(req.body.From,`Thank you! You will be reminded every ${req.body.Body} days`);
+                    message(req.body.From,`Thank you! You will be reminded every ${req.body.Body} minute`);
+                    let messageon = Date.now();
+                    console.log(messageon);
                     await prisma.contacts.update({
                         where:{
                             id:contact0.id
                         },
                         data:{
-                            frequency:parseInt(req.body.Body)
+                            frequency:parseInt(req.body.Body),
                         }
                     })
                     registeredCase='vcfNotSent'
@@ -193,5 +196,32 @@ app.post('/spiderman', async (req, res) => {
             }
     }
 })
+
+cron.schedule("* * * * *", async () => {
+    const currentDate = new Date();
+  
+    // Find records where `messageOn` has passed and the message hasn't been sent yet
+    const messagesToSend = await prisma.contacts.findMany({
+      where: {
+        dateToMessage: {
+          lte: currentDate, // `messageOn` is less than or equal to the current time
+        },
+        sent: false, // Only unsent messages
+      },
+    });
+  
+    // Send messages and mark them as sent
+    for (const mess of messagesToSend) {
+      await message(mess.phone, `You should talk to ${mess.name} today.`);
+  
+      // Update the record to mark it as sent
+      await prisma.message.update({
+        where: { id: mess.id },
+        data: { sent: true },
+      });
+    }
+  });
+  
+  console.log("Cron job started...");
 
 app.listen(3000, () => { console.log(`Server is running on port ${port}`) });

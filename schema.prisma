@@ -18,7 +18,9 @@ model contacts{
   name String
   context String?
   frequency Int?
+  sent Boolean @default(false)
   number String[]
+  dateToMessage DateTime?
   userid Int
   user   users  @relation(fields: [userid], references: [uid])
 }
