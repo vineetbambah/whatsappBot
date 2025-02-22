@@ -179,14 +179,15 @@ app.post('/spiderman', async (req, res) => {
                 case 'askForFrequency':
                     console.log('Asking for frequency');
                     message(req.body.From,`Thank you! You will be reminded every ${req.body.Body} minute`);
-                    let messageon = Date.now();
-                    console.log(messageon);
+                    console.log(`Frequency: ${req.body.Body}`);
+                    console.log(`Date:{${new Date()}}`);
                     await prisma.contacts.update({
                         where:{
                             id:contact0.id
                         },
                         data:{
                             frequency:parseInt(req.body.Body),
+                            dateToMessage:(new Date(new Date().getTime() + parseInt(req.body.Body) * 60000))
                         }
                     })
                     registeredCase='vcfNotSent'
@@ -209,13 +210,17 @@ cron.schedule("* * * * *", async () => {
         sent: false, // Only unsent messages
       },
     });
-  
+    console.log(messagesToSend)
     // Send messages and mark them as sent
     for (const mess of messagesToSend) {
-      await message(mess.phone, `You should talk to ${mess.name} today.`);
-  
+        let sender = await prisma.users.findFirst({
+            where:{uid:mess.userid}
+        })
+        console.log(sender.number)
+      await message(`whatsapp:${sender.number}`, `You should talk to ${mess.name} today.`);
+      console.log('sending message')
       // Update the record to mark it as sent
-      await prisma.message.update({
+      await prisma.contacts.update({
         where: { id: mess.id },
         data: { sent: true },
       });
