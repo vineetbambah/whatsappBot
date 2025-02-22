@@ -222,7 +222,9 @@ cron.schedule("* * * * *", async () => {
       // Update the record to mark it as sent
       await prisma.contacts.update({
         where: { id: mess.id },
-        data: { sent: true },
+        data: {
+            dateToMessage:(new Date(new Date().getTime() + mess.frequency * 60000))
+        },
       });
     }
   });
