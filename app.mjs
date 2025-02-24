@@ -104,7 +104,7 @@ app.post('/spiderman', async (req, res) => {
         userState = 'onboarding1';
     }else if(user && userState === 'onboarding1'){
         userState = 'onboarding2';
-    }else if(user && user.name === 'Being Set'){
+    }else if(user && user.name === 'Hi'){
         userState = 'onboarding2';
     }else{
         userState = 'registered';
