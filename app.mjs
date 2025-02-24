@@ -104,6 +104,8 @@ app.post('/spiderman', async (req, res) => {
         userState = 'onboarding1';
     }else if(user && userState === 'onboarding1'){
         userState = 'onboarding2';
+    }else if(user && user.name === 'Being Set'){
+        userState = 'onboarding2';
     }else{
         userState = 'registered';
     }
@@ -122,9 +124,9 @@ app.post('/spiderman', async (req, res) => {
               } catch (error) {
                 console.error("Error creating user:", error);
               }
-            message(req.body.From,`Hello! I see it's your first time here. Please enter your name.`);
             break;
         case 'onboarding2':
+            message(req.body.From,`Hello! I see it's your first time here. Please enter your name.`);
             console.log('Updating name');
             await prisma.users.update({
                 where:{
