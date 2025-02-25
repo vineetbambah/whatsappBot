@@ -104,8 +104,6 @@ app.post('/spiderman', async (req, res) => {
         userState = 'onboarding1';
     }else if(user && userState === 'onboarding1'){
         userState = 'onboarding2';
-    }else if(user && user.name === 'Hi'){
-        userState = 'onboarding2';
     }else{
         userState = 'registered';
     }
@@ -136,7 +134,7 @@ app.post('/spiderman', async (req, res) => {
                     name:req.body.Body
                 }
             });
-            message(req.body.From,`Welcome ${req.body.Body}! Please send a VCF file to get started`);
+            message(req.body.From,`Welcome ${req.body.Body}! Please send a contact file to get started`);
             break;
         case 'registered':
             console.log('User is registered');
