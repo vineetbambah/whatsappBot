@@ -84,6 +84,15 @@ const message = async (dest,msg) =>{
     )
 }
 
+const askForFreq = async (dest) =>{
+    const message = await client.messages.create({
+        contentSid: 'HX82ad1da31d3120d52e0912cdb8b4f718',
+        from: 'whatsapp:+14155238886',
+        to: await dest,
+    }
+    )
+    console.log(message)
+}
 app.use(express.urlencoded({ extended: true }));
 app.get('/', (req, res) => {
     res.send('Hello World');
@@ -173,23 +182,85 @@ app.post('/spiderman', async (req, res) => {
                         }
                     }));
                     console.log(contact0);
-                    message(req.body.From,`Thank you! How often would you like to be reminded?(enter integer in minutes)`);
+                    client.messages.create(
+                        {
+                            from:'whatsapp:+14155238886',
+                            to: req.body.From,
+                            body:`Thank you! How often would you like to be reminded to talk to ${contact0.name}? 
+1. Every 3 minutes 
+2. Daily 
+3. Weekly 
+4. Monthly 
+  5.Every 3 Months`
+                        }
+                    )
                     registeredCase = 'askForFrequency';
                     break;
                 case 'askForFrequency':
                     console.log('Asking for frequency');
-                    message(req.body.From,`Thank you! You will be reminded every ${req.body.Body} minute`);
+                        switch(req.body.Body){
+                            case '1':
+                                await prisma.contacts.update({
+                                    where:{
+                                        id:contact0.id
+                                    },
+                                    data:{
+                                        frequency:3,
+                                        dateToMessage:(new Date(new Date().getTime() + 3 * 60000))
+                                    }
+                                })
+                                break;
+                                case '2':
+                                    await prisma.contacts.update({
+                                        where:{
+                                            id:contact0.id
+                                        },
+                                        data:{
+                                            frequency:1440,
+                                            dateToMessage:(new Date(new Date().getTime() + 1440 * 60000))
+                                        }
+                                    })
+                                    break;
+                                case '3':
+                                    await prisma.contacts.update({
+                                        where:{
+                                            id:contact0.id
+                                        },
+                                        data:{
+                                            frequency:10080,
+                                            dateToMessage:(new Date(new Date().getTime() + 10080 * 60000))
+                                        }
+                                    })
+                                    break;
+                                case '4':
+                                    await prisma.contacts.update({
+                                        where:{
+                                            id:contact0.id
+                                        },
+                                        data:{
+                                            frequency:43200,
+                                            dateToMessage:(new Date(new Date().getTime() + 43200 * 60000))
+                                        }
+                                    })
+                                    break;
+                                case '5':
+                                    await prisma.contacts.update({
+                                        where:{
+                                            id:contact0.id
+                                        },
+                                        data:{
+                                            frequency:129600,
+                                            dateToMessage:(new Date(new Date().getTime() + 129600 * 60000))
+                                        }
+                                    })
+                                    break;
+                                default:
+                                    message(req.body.From,`Please enter a valid option`);
+                                    break;
+                            }
+                    message(req.body.From,`Thank you! You will be reminded accordingly to talk to ${contact0.name}`);
                     console.log(`Frequency: ${req.body.Body}`);
                     console.log(`Date:{${new Date()}}`);
-                    await prisma.contacts.update({
-                        where:{
-                            id:contact0.id
-                        },
-                        data:{
-                            frequency:parseInt(req.body.Body),
-                            dateToMessage:(new Date(new Date().getTime() + parseInt(req.body.Body) * 60000))
-                        }
-                    })
                     registeredCase='vcfNotSent'
                     break;
                 case 'vcfNotSent':
